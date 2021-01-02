@@ -15,11 +15,16 @@ var velocity := Vector3()
 var direction := Vector3()
 var move_axis := Vector2()
 var sprint_enabled := true
+var crouch_enabled := true
 var sprinting := false
+var crouching := false
+
 # Walk
+const FLOOR_NORMAL := Vector3(0, 1, 0)
 const FLOOR_MAX_ANGLE: float = deg2rad(46.0)
 export(float) var gravity = 30.0
 export(int) var walk_speed = 10
+export(int) var crouch_speed = 6
 export(int) var sprint_speed = 16
 export(int) var acceleration = 8
 export(int) var deacceleration = 10
@@ -77,9 +82,9 @@ func walk(delta: float) -> void:
 	# Jump
 	var _snap: Vector3
 	if is_on_floor():
-		_snap = Vector3.DOWN
+		_snap = Vector3(0, -1, 0)
 		if Input.is_action_just_pressed("move_jump"):
-			_snap = Vector3.ZERO
+			_snap = Vector3(0, 0, 0)
 			velocity.y = jump_height
 	
 	# Apply Gravity
@@ -95,6 +100,16 @@ func walk(delta: float) -> void:
 		_speed = walk_speed
 		cam.set_fov(lerp(cam.fov, FOV, delta * 8))
 		sprinting = false
+		
+	var _crouch: int
+	if (Input.is_action_pressed("move_crouch") and can_crouch() and move_axis.x >= 0.5):
+		_crouch = crouch_speed
+		cam.v_offset = -1
+		crouching = true
+	else:
+		_crouch = walk_speed
+		cam.v_offset = 0
+		crouching = false
 	
 	# Acceleration and Deacceleration
 	# where would the player go
@@ -121,7 +136,7 @@ func walk(delta: float) -> void:
 			velocity.z = 0
 	
 	# Move
-	var moving = move_and_slide_with_snap(velocity, _snap, Vector3.UP, true, 4, FLOOR_MAX_ANGLE)
+	var moving = move_and_slide_with_snap(velocity, _snap, FLOOR_NORMAL, true, 4, FLOOR_MAX_ANGLE)
 	if is_on_wall():
 		velocity = moving
 	else:
@@ -169,3 +184,6 @@ func camera_rotation() -> void:
 
 func can_sprint() -> bool:
 	return (sprint_enabled and is_on_floor())
+
+func can_crouch() -> bool:
+	return (crouch_enabled and is_on_floor())
